@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+        <script>
+            document.addEventListener("DOMContentLoaded", function (event) {
+                window.post = function (url, data) {
+                    fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(result => {
+                        return;
+                    });
+                }
+
+                window.changeChannel = function (id) {
+                    post('/change', { channel: id });
+                    console.log("Change channel to", id);
+                    window.location = "/";
+                }
+            });
+        </script>
+        <link rel="stylesheet" href="static/style.css">
+        <title>{{ name }} control panel</title>
+    </head>
+
+    <body>
+        <h2 style="text-align: center;" class="text">{{ name }} control panel</h1>
+        <div class="outer">
+            <h2 class="text">Select channel</h2>
+            {% for server in servers %}
+            <p class="text">{{server.name}}</p>
+            {% for channel in server.channels %}
+            <button class="button button-not-menu text" onclick="changeChannel('{{channel.id}}')">{{channel.name}}{% if channel.is_voice %} (voice channel){% endif %}</button>
+            {% endfor %}
+            {% endfor %}
+        </div>
+    </body>
+
+</html>

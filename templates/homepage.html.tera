@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+        <script>
+            document.addEventListener("DOMContentLoaded", function (event) {
+                window.post = function (url, data) {
+                    return fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+                }
+
+                window.postEmpty = function (url) {
+                    return fetch(url, { method: "POST" });
+                }
+
+                text = document.getElementById("text");
+
+                window.send = function () {
+                    post('/send', { content: text.value });
+                    console.log("Send", text.value);
+                    text.value = "";
+                }
+
+                window.changeChannel = function () {
+                    window.location = "/change";
+                }
+                
+                window.kill = function () {
+                    postEmpty('/kill').then(_ => {});
+                    window.alert("Bot killed");
+                    console.log("Kill bot");
+                }
+            });
+        </script>
+        <link rel="stylesheet" href="static/style.css">
+        <title>{{ name }} control panel</title>
+    </head>
+
+    <body>
+        <h2 style="text-align: center;" class="text">{{ name }} control panel</h1>
+            <div class="outer">
+                <div class="buttons">
+                    <button onclick="send()" class="button button-menu text">Send</button>
+                    <button onclick="changeChannel()" class="button button-menu text">Change channel</button>
+                    <button onclick="kill()" class="button button-menu text">Kill bot</button>
+                    <button onclick="window.location = '{{ link }}'" class="button button-menu text">Invite bot</button>
+                </div>
+                <input type="text" id="text" class="textarea text" spellcheck="false" onkeydown="if (event.key == 'Enter') {send()}" placeholder="Message..."></textarea>
+            </div>
+    </body>
+
+</html>

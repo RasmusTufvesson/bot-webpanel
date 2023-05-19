@@ -1,0 +1,85 @@
+:root {
+    --background-1: #0A2647;
+    --background-15: #0b2a4f;
+    --background-2: #144272;
+    --foreground-1: #205295;
+    --foreground-2: #2C74B3;
+    --foreground-3: #53a1e6;
+}
+
+body {
+    font-family: 'Roboto Mono', monospace;
+    background-color: var(--background-1);
+}
+
+.outer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: auto;
+    border: 3px solid var(--foreground-1);
+    flex-direction: column;
+    border-radius: 4px;
+    background-color: var(--background-15);
+    padding-top: 20px;
+}
+
+.outer > * {
+    margin-bottom: 20px !important;
+}
+
+.button {
+    transition-duration: 0.4s;
+    padding: 8px 24px;
+    background-color: var(--foreground-1);
+    border: none;
+    font-size: 16px;
+    font-family: 'Roboto Mono', monospace;
+    float: left;
+    border-style: none;
+    outline: none;
+}
+
+.button:hover {
+    background-color: var(--background-2);
+}
+
+.textarea {
+    outline: none;
+    box-shadow: none;
+    margin: auto;
+    width: 60%;
+    height: 50px;
+    resize: none;
+    padding: 12px 20px;
+    box-sizing: border-box;
+    border: 2px solid var(--background-2);
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: var(--background-1);
+}
+
+.buttons {
+    margin-top: auto;
+}
+
+.button-menu:first-child {
+    border-radius: 4px 0px 0px 4px;
+}
+
+.button-menu:last-child {
+    border-radius: 0px 4px 4px 0px;
+}
+
+.button-menu:not(:first-child):not(:last-child) {
+    border-radius: 0px;
+}
+
+.button-not-menu {
+    border-radius: 4px;
+}
+
+.text {
+    color: var(--foreground-3);
+    font-family: 'Roboto Mono', monospace;
+}
