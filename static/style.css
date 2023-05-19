@@ -5,11 +5,17 @@
     --foreground-1: #205295;
     --foreground-2: #2C74B3;
     --foreground-3: #53a1e6;
+    --error-border: #800f0f;
+    --error-background: #941818;
+    --error-text: #ed6464;
 }
 
 body {
     font-family: 'Roboto Mono', monospace;
     background-color: var(--background-1);
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 .outer {
@@ -82,4 +88,39 @@ body {
 .text {
     color: var(--foreground-3);
     font-family: 'Roboto Mono', monospace;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+    -webkit-border-radius: 8px;
+    border-radius: 8px;
+    background: var(--background-15);
+}
+
+html {
+    overflow: auto;
+}
+
+.error {
+    border: 2px solid var(--error-border);
+    border-radius: 4px;
+    padding: 5px 10px;
+    background-color: var(--error-background);
+    color: var(--error-text);
+}
+
+.inline {
+    display: flex;
+    align-items: center;
+}
+
+.inline > :not(:first-child) {
+    margin-left: 10px;
+}
+
+.back-button:hover::before {
+    content: "« ";
 }

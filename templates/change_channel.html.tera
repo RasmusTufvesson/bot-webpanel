@@ -19,6 +19,13 @@
                     console.log("Change channel to", id);
                     window.location = "/";
                 }
+
+                window.addDM = function () {
+                    id = window.prompt("User id:");
+                    post('/dm', { user: id });
+                    console.log("Add dm channel for ", id);
+                    window.location = "/";
+                }
             });
         </script>
         <link rel="stylesheet" href="static/style.css">
@@ -29,12 +36,19 @@
         <h2 style="text-align: center;" class="text">{{ name }} control panel</h1>
         <div class="outer">
             <h2 class="text">Select channel</h2>
+            <button class="button button-not-menu text back-button" onclick="window.location = '/'">Back</button>
+            {% if servers | length != 0 %}
             {% for server in servers %}
             <p class="text">{{server.name}}</p>
             {% for channel in server.channels %}
             <button class="button button-not-menu text" onclick="changeChannel('{{channel.id}}')">{{channel.name}}{% if channel.is_voice %} (voice channel){% endif %}</button>
             {% endfor %}
             {% endfor %}
+            {% else %}
+            <p class="text error">No availible server channels</p>
+            {% endif %}
+            <p class="text">Direct messages</p>
+            <button class="button text button-not-menu", onclick="addDM()">Direct message</button>
         </div>
     </body>
 

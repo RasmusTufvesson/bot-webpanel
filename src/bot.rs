@@ -1,18 +1,18 @@
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
 use std::sync::Arc;
 use serenity::async_trait;
 use serenity::client::bridge::gateway::ShardManager;
-use serenity::model::prelude::{ChannelId, Ready, ChannelType};
+use serenity::model::prelude::{ChannelId, Ready, ChannelType, UserId, Channel};
 use serenity::prelude::*;
-use rocket::tokio::sync::mpsc::{Receiver, error::TryRecvError, Sender};
-use crate::shared;
+use rocket::tokio::sync::mpsc::{Receiver, Sender};
+use crate::shared::{self, ViewChannelMessage, DiscordMessage, FullChannel};
 
 struct Handler {
     loop_running: AtomicBool,
     loop_handler: LoopHandler,
     to_send_recv: Arc<Mutex<Receiver<shared::Message>>>,
-    channel_send: Arc<Sender<Vec<shared::Server>>>,
+    channel_send: Arc<Sender<shared::ChannelMessage>>,
+    channel_contents_send: Arc<Sender<shared::ViewChannelMessage>>,
 }
 
 #[derive(Clone)]
@@ -37,17 +37,18 @@ impl EventHandler for Handler {
             let channel = Arc::clone(&handler.channel_id);
             let to_send_recv = Arc::clone(&self.to_send_recv);
             let channel_send = Arc::clone(&self.channel_send);
+            let channel_contents_send = Arc::clone(&self.channel_contents_send);
             rocket::tokio::spawn(async move {
                 loop {
-                    let result = to_send_recv.lock().await.try_recv();
+                    let result = to_send_recv.lock().await.recv().await;
                     match result {
-                        Ok(message) => {
+                        Some(message) => {
                             match message {
                                 shared::Message::Send(content) => {
                                     if let Some(channel_id) = *channel.lock().await {
                                         send_message(&ctx, channel_id, &content).await;
                                     } else {
-                                        eprintln!("No channel specified")
+                                        eprintln!("No channel specified");
                                     }
                                 }
                                 shared::Message::ChangeChannel(new_channel) => {
@@ -65,7 +66,7 @@ impl EventHandler for Handler {
                                     let shard_manager = match data.get::<ShardManagerContainer>() {
                                         Some(v) => v,
                                         None => {
-                                            panic!("couldnt get shard manager")
+                                            panic!("couldnt get shard manager");
                                         },
                                     };
                                     let mut manager = shard_manager.lock().await;
@@ -88,16 +89,96 @@ impl EventHandler for Handler {
                                             }
                                         }
                                     }
-                                    match channel_send.send(servers).await {
+                                    let channels = shared::ChannelMessage::new(
+                                        servers,
+                                    );
+                                    match channel_send.send(channels).await {
                                         Ok(_) => {}
                                         Err(why) => {
                                             panic!("couldnt send requested channels: {}", why)
                                         }
                                     }
                                 }
+                                shared::Message::MakeDirectMessageChannel(user_id) => {
+                                    let user_id = UserId::from(user_id);
+                                    match user_id.to_user(&ctx.http).await {
+                                        Ok(user) => {
+                                            match user.create_dm_channel(&ctx.http).await {
+                                                Ok(dm) => {
+                                                    *channel.lock().await = Some(dm.id);
+                                                }
+                                                Err(why) => {
+                                                    eprintln!("Error creating dm: {}", why);
+                                                }
+                                            }
+                                        }
+                                        Err(why) => {
+                                            eprintln!("Error getting user: {}", why);
+                                        }
+                                    }
+                                }
+                                shared::Message::RequestChannelContents => {
+                                    if let Some(channel_id) = *channel.lock().await {
+                                        match channel_id.messages(&ctx.http, |retriever| retriever.limit(25)).await {
+                                            Ok(messages) => {
+                                                let mut send_messages: Vec<DiscordMessage> = vec![];
+                                                for message in messages {
+                                                    send_messages.push(DiscordMessage::new(message.content, message.author.name))
+                                                }
+                                                if let Ok(channel) = channel_id.to_channel(&ctx.http).await {
+                                                    match channel {
+                                                        Channel::Guild(channel) => {
+                                                            let full_channel = FullChannel::new(channel.name, send_messages, false);
+                                                            match channel_contents_send.send(ViewChannelMessage::new(Some(full_channel))).await {
+                                                                Ok(_) => {}
+                                                                Err(why) => {
+                                                                    panic!("couldnt send requested channel messages: {}", why);
+                                                                }
+                                                            }
+                                                        }
+                                                        Channel::Private(channel) => {
+                                                            let full_channel = FullChannel::new(channel.recipient.name, send_messages, true);
+                                                            match channel_contents_send.send(ViewChannelMessage::new(Some(full_channel))).await {
+                                                                Ok(_) => {}
+                                                                Err(why) => {
+                                                                    panic!("couldnt send requested channel messages: {}", why);
+                                                                }
+                                                            }
+                                                        }
+                                                        _ => {
+                                                            match channel_contents_send.send(ViewChannelMessage::new(None)).await {
+                                                                Ok(_) => {}
+                                                                Err(why) => {
+                                                                    panic!("couldnt send requested channel messages: {}", why);
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            Err(why) => {
+                                                eprintln!("Error getting messages: {}", why);
+                                                match channel_contents_send.send(ViewChannelMessage::new(None)).await {
+                                                    Ok(_) => {}
+                                                    Err(why) => {
+                                                        panic!("couldnt send requested channel messages: {}", why);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        eprintln!("No channel specified");
+                                        match channel_contents_send.send(ViewChannelMessage::new(None)).await {
+                                            Ok(_) => {}
+                                            Err(why) => {
+                                                panic!("couldnt send requested channel messages: {}", why);
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        },
-                        Err(TryRecvError::Disconnected) => {
+                        }
+                        None => {
                             let data = ctx.data.read().await;
                             let shard_manager = match data.get::<ShardManagerContainer>() {
                                 Some(v) => v,
@@ -108,10 +189,8 @@ impl EventHandler for Handler {
                             let mut manager = shard_manager.lock().await;
                             manager.shutdown_all().await;
                             panic!("channel closed");
-                        },
-                        _ => {}
+                        }
                     }
-                    rocket::tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             });
 
@@ -120,18 +199,20 @@ impl EventHandler for Handler {
     }
 }
 
-pub async fn main(token: String, to_send_recv: Receiver<shared::Message>, channel_send: Sender<Vec<shared::Server>>) {
+pub async fn main(token: String, to_send_recv: Receiver<shared::Message>, channel_send: Sender<shared::ChannelMessage>, channel_contents_send: Sender<shared::ViewChannelMessage>) {
     let channel_id = Arc::new(Mutex::new(None)); //Arc::new(ChannelId::from(send_channel_id));
     let to_send_recv = Arc::new(Mutex::new(to_send_recv));
     let channel_send = Arc::new(channel_send);
+    let channel_contents_send = Arc::new(channel_contents_send);
     let intents = GatewayIntents::GUILD_MESSAGES
-        | GatewayIntents::DIRECT_MESSAGES;
+        | GatewayIntents::DIRECT_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
     let mut client = Client::builder(&token, intents)
         .event_handler(Handler {
             loop_running: AtomicBool::new(false),
             loop_handler: LoopHandler { channel_id: channel_id },
             to_send_recv,
             channel_send,
+            channel_contents_send,
         })
         .await
         .expect("Error creating client");
@@ -147,9 +228,6 @@ pub async fn main(token: String, to_send_recv: Receiver<shared::Message>, channe
 }
 
 async fn send_message(ctx: &Context, channel_id: ChannelId, message: &str) {
-    println!("is correct: {}", ChannelId::from(1025817646433833023) == channel_id);
-    println!("correct: {}", ChannelId::from(1025817646433833023));
-    println!("unknown: {}", channel_id);
     if let Err(why) = channel_id.say(&ctx.http, message).await {
         eprintln!("Error sending message: {:?}", why);
     }

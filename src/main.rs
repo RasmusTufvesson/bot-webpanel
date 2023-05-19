@@ -26,9 +26,11 @@ async fn main() -> Result<(), rocket::Error> {
     let (tx, rx) = tokio::sync::mpsc::channel(100);
     let (tx_channels, rx_channels) = tokio::sync::mpsc::channel(100);
     let rx_channels_arc = Arc::new(Mutex::new(rx_channels));
+    let (tx_channel, rx_channel) = tokio::sync::mpsc::channel(100);
+    let rx_channel_arc = Arc::new(Mutex::new(rx_channel));
 
-    let server = tokio::spawn(server::main(tx, rx_channels_arc, config.bot_name, config.invite_link));
-    bot::main(config.token, rx, tx_channels).await;
+    let server = tokio::spawn(server::main(tx, rx_channels_arc, rx_channel_arc, config.bot_name, config.invite_link));
+    bot::main(config.token, rx, tx_channels, tx_channel).await;
     server.await.unwrap()?;
 
     Ok(())

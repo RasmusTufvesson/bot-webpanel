@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+    <title>{{ name }} control panel</title>
+</head>
+
+<body>
+    <h2 style="text-align: center;" class="text">{{ name }} control panel</h1>
+        <div class="outer">
+            {% if channel.is_dm %}
+            <h2 class="text">Direct messages with {{ channel.name }}</h2>
+            {% else %}
+            <h2 class="text">{{ channel.name }}</h2>
+            {% endif %}
+            <button class="button button-not-menu text back-button" onclick="window.location = '/'">Back</button>
+            {% if channel.messages | length != 0 %}
+            {% for message in channel.messages %}
+            <p class="text">{{ message.author }}: {{ message.content }}</p>
+            {% endfor %}
+            {% else %}
+            <p class="text error">No messages</p>
+            {% endif %}
+        </div>
+</body>
+
+</html>

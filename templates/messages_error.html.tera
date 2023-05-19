@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+    <title>{{ name }} control panel</title>
+</head>
+
+<body>
+    <h2 style="text-align: center;" class="text">{{ name }} control panel</h1>
+        <div class="outer">
+            <h2 class="text error">Error getting messages</h2>
+            <button class="button button-not-menu text back-button" onclick="window.location = '/'">Back</button>
+        </div>
+</body>
+
+</html>

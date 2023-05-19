@@ -27,16 +27,35 @@ fn homepage(bot_info: &State<BotInfo>) -> Template {
 }
 
 #[get("/change")]
-async fn change(sender: &State<mpsc::Sender<shared::Message>>, receiver: &State<Arc<Mutex<mpsc::Receiver<Vec<shared::Server>>>>>, bot_info: &State<BotInfo>) -> Template {
+async fn change(sender: &State<mpsc::Sender<shared::Message>>, receiver: &State<Arc<Mutex<mpsc::Receiver<shared::ChannelMessage>>>>, bot_info: &State<BotInfo>) -> Template {
     sender.send(
         shared::Message::RequestChannels
     ).await.unwrap();
     let mut receiver = receiver.lock().await;
-    let servers = receiver.recv().await.unwrap();
+    let channels = receiver.recv().await.unwrap();
     Template::render("change_channel", context! {
-        servers: servers,
+        servers: channels.servers,
         name: &bot_info.inner().bot_name,
     })
+}
+
+#[get("/messages")]
+async fn messages(sender: &State<mpsc::Sender<shared::Message>>, receiver: &State<Arc<Mutex<mpsc::Receiver<shared::ViewChannelMessage>>>>, bot_info: &State<BotInfo>) -> Template {
+    sender.send(
+        shared::Message::RequestChannelContents
+    ).await.unwrap();
+    let mut receiver = receiver.lock().await;
+    let channel = receiver.recv().await.unwrap();
+    if let Some(channel) = channel.channel {
+        Template::render("messages", context! {
+            channel: channel,
+            name: &bot_info.inner().bot_name,
+        })
+    } else {
+        Template::render("messages_error", context! {
+            name: &bot_info.inner().bot_name,
+        })
+    }
 }
 
 #[derive(Deserialize)]
@@ -49,6 +68,12 @@ struct Message<'r> {
 #[serde(crate = "rocket::serde")]
 struct ChangeChannel<'r> {
     channel: &'r str, // parse to u64
+}
+
+#[derive(Deserialize)]
+#[serde(crate = "rocket::serde")]
+struct AddDM<'r> {
+    user: &'r str, // parse to u64
 }
 
 #[post("/send", data = "<message>", format = "application/json")]
@@ -71,6 +96,19 @@ async fn change_channel(sender: &State<mpsc::Sender<shared::Message>>, new_chann
     ).await.unwrap();
 }
 
+#[post("/dm", data = "<user>", format = "application/json")]
+async fn add_dm(sender: &State<mpsc::Sender<shared::Message>>, user: Json<AddDM<'_>>) {
+    sender.send(
+        shared::Message::MakeDirectMessageChannel(match user.user.parse::<u64>() {
+            Ok(val) => {val}
+            Err(why) => {
+                eprintln!("Failed to parse channel id: {}", why);
+                return;
+            }
+        })
+    ).await.unwrap();
+}
+
 #[post("/kill")]
 async fn kill(sender: &State<mpsc::Sender<shared::Message>>, shutdown: Shutdown) {
     println!("killing");
@@ -80,12 +118,19 @@ async fn kill(sender: &State<mpsc::Sender<shared::Message>>, shutdown: Shutdown)
     shutdown.notify();
 }
 
-pub async fn main(sender: mpsc::Sender<shared::Message>, receiver: Arc<Mutex<mpsc::Receiver<Vec<shared::Server>>>>, bot_name: String, invite_link: String) -> Result<(), rocket::Error> {
+pub async fn main(
+    sender: mpsc::Sender<shared::Message>,
+    receiver: Arc<Mutex<mpsc::Receiver<shared::ChannelMessage>>>,
+    message_receiver: Arc<Mutex<mpsc::Receiver<shared::ViewChannelMessage>>>,
+    bot_name: String,
+    invite_link: String) -> Result<(), rocket::Error> {
+
     let _rocket = rocket::build()
         .manage(sender)
         .manage(receiver)
+        .manage(message_receiver)
         .manage(BotInfo {bot_name, invite_link})
-        .mount("/", routes![homepage, send, change_channel, kill, change])
+        .mount("/", routes![homepage, send, change_channel, kill, change, add_dm, messages])
         .mount("/static", FileServer::from(relative!("static")))
         .attach(Template::fairing())
         .launch()
