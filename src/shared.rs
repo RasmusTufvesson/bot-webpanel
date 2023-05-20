@@ -68,11 +68,12 @@ pub struct FullChannel {
     name: String,
     messages: Vec<DiscordMessage>,
     is_dm: bool,
+    server: Option<String>
 }
 
 impl FullChannel {
-    pub fn new(name: String, messages: Vec<DiscordMessage>, is_dm: bool) -> Self {
-        Self { name, messages, is_dm }
+    pub fn new(name: String, messages: Vec<DiscordMessage>, is_dm: bool, server: Option<String>) -> Self {
+        Self { name, messages, is_dm, server }
     }
 }
 

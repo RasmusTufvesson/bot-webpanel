@@ -128,16 +128,26 @@ impl EventHandler for Handler {
                                                 if let Ok(channel) = channel_id.to_channel(&ctx.http).await {
                                                     match channel {
                                                         Channel::Guild(channel) => {
-                                                            let full_channel = FullChannel::new(channel.name, send_messages, false);
-                                                            match channel_contents_send.send(ViewChannelMessage::new(Some(full_channel))).await {
-                                                                Ok(_) => {}
-                                                                Err(why) => {
-                                                                    panic!("couldnt send requested channel messages: {}", why);
+                                                            if let Ok(guild) = channel.guild_id.to_partial_guild(&ctx.http).await {
+                                                                let full_channel = FullChannel::new(channel.name, send_messages, false, Some(guild.name));
+                                                                match channel_contents_send.send(ViewChannelMessage::new(Some(full_channel))).await {
+                                                                    Ok(_) => {}
+                                                                    Err(why) => {
+                                                                        panic!("couldnt send requested channel messages: {}", why);
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                let full_channel = FullChannel::new(channel.name, send_messages, false, None);
+                                                                match channel_contents_send.send(ViewChannelMessage::new(Some(full_channel))).await {
+                                                                    Ok(_) => {}
+                                                                    Err(why) => {
+                                                                        panic!("couldnt send requested channel messages: {}", why);
+                                                                    }
                                                                 }
                                                             }
                                                         }
                                                         Channel::Private(channel) => {
-                                                            let full_channel = FullChannel::new(channel.recipient.name, send_messages, true);
+                                                            let full_channel = FullChannel::new(channel.recipient.name, send_messages, true, None);
                                                             match channel_contents_send.send(ViewChannelMessage::new(Some(full_channel))).await {
                                                                 Ok(_) => {}
                                                                 Err(why) => {

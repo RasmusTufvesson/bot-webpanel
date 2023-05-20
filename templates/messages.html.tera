@@ -16,7 +16,7 @@
             {% if channel.is_dm %}
             <h2 class="text">Direct messages with {{ channel.name }}</h2>
             {% else %}
-            <h2 class="text">{{ channel.name }}</h2>
+            <h2 class="text">{{ channel.name }}{% if channel.server %} in {{ channel.server }}{% endif %}</h2>
             {% endif %}
             <button class="button button-not-menu text back-button" onclick="window.location = '/'">Back</button>
             {% if channel.messages | length != 0 %}
