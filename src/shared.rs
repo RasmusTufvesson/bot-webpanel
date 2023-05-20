@@ -8,6 +8,7 @@ pub enum Message {
     RequestChannels,
     MakeDirectMessageChannel(u64),
     RequestChannelContents,
+    RequestMemebers,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -81,7 +82,7 @@ impl FullChannel {
 #[derive(Debug, serde::Serialize)]
 #[serde(crate = "rocket::serde")]
 pub struct ViewChannelMessage {
-    pub channel: Option<FullChannel>
+    pub channel: Option<FullChannel>,
 }
 
 impl ViewChannelMessage {
@@ -90,15 +91,33 @@ impl ViewChannelMessage {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Eq, PartialOrd, Ord, Clone)]
 #[serde(crate = "rocket::serde")]
 pub struct DMChannel {
     pub id: u64,
     pub name: String,
 }
 
+impl PartialEq for DMChannel {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
 impl DMChannel {
     pub fn new(id: u64, name: String) -> Self {
         Self { id, name }
+    }
+}
+
+#[derive(Debug, serde::Serialize)]
+#[serde(crate = "rocket::serde")]
+pub struct UsersMessage {
+    pub users: Vec<DMChannel>,
+}
+
+impl UsersMessage {
+    pub fn new(users: Vec<DMChannel>) -> Self {
+        Self { users }
     }
 }

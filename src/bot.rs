@@ -13,6 +13,7 @@ struct Handler {
     to_send_recv: Arc<Mutex<Receiver<shared::Message>>>,
     channel_send: Arc<Sender<shared::ChannelMessage>>,
     channel_contents_send: Arc<Sender<shared::ViewChannelMessage>>,
+    users_send: Arc<Sender<shared::UsersMessage>>,
     pub dm_channels: Arc<Mutex<Vec<shared::DMChannel>>>,
 }
 
@@ -40,6 +41,7 @@ impl EventHandler for Handler {
             let channel_send = Arc::clone(&self.channel_send);
             let channel_contents_send = Arc::clone(&self.channel_contents_send);
             let dm_channels = Arc::clone(&self.dm_channels);
+            let users_send = Arc::clone(&self.users_send);
             rocket::tokio::spawn(async move {
                 loop {
                     let result = to_send_recv.lock().await.recv().await;
@@ -192,6 +194,33 @@ impl EventHandler for Handler {
                                         }
                                     }
                                 }
+                                shared::Message::RequestMemebers => {
+                                    let mut users: Vec<shared::DMChannel> = vec![];
+                                    if let Ok(guilds) = ready.user.guilds(&ctx.http).await {
+                                        for guild in guilds {
+                                            match guild.id.members(&ctx.http, None, None).await {
+                                                Ok(members) => {
+                                                    for member in members {
+                                                        let user = shared::DMChannel::new(member.user.id.0, member.user.name);
+                                                        if !users.contains(&user) && user.id != ready.user.id.0 {
+                                                            users.push(user);
+                                                        }
+                                                    }
+                                                }
+                                                Err(why) => {
+                                                    eprintln!("Couldnt get members of guild: {}", why)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    let users_message = shared::UsersMessage::new(users);
+                                    match users_send.send(users_message).await {
+                                        Ok(_) => {}
+                                        Err(why) => {
+                                            panic!("couldnt send requested members: {}", why)
+                                        }
+                                    }
+                                }
                             }
                         }
                         None => {
@@ -219,7 +248,8 @@ pub async fn main<F>(
     channel_send: Sender<shared::ChannelMessage>,
     channel_contents_send: Sender<shared::ViewChannelMessage>,
     dm_channels: Vec<shared::DMChannel>,
-    save_fn: F
+    save_fn: F,
+    users_send: Sender<shared::UsersMessage>,
 )
 where F: Fn(rocket::tokio::sync::MutexGuard<Vec<shared::DMChannel>>)
 {
@@ -228,6 +258,7 @@ where F: Fn(rocket::tokio::sync::MutexGuard<Vec<shared::DMChannel>>)
     let channel_send = Arc::new(channel_send);
     let channel_contents_send = Arc::new(channel_contents_send);
     let dm_channels: Arc<Mutex<Vec<shared::DMChannel>>> = Arc::new(Mutex::new(dm_channels));
+    let users_send = Arc::new(users_send);
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
     let mut client = Client::builder(&token, intents)
@@ -238,6 +269,7 @@ where F: Fn(rocket::tokio::sync::MutexGuard<Vec<shared::DMChannel>>)
             channel_send,
             channel_contents_send,
             dm_channels: Arc::clone(&dm_channels),
+            users_send,
         })
         .await
         .expect("Error creating client");

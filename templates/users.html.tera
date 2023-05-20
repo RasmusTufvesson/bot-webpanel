@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/style.css">
+    <title>{{ name }} control panel</title>
+    <script>
+        document.addEventListener("DOMContentLoaded", function (event) {
+            window.post = function (url, data) {
+                fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(result => {
+                    return;
+                });
+            }
+
+            window.addDM = function (id = "") {
+                if (id === "") {
+                    id = window.prompt("User id:");
+                }
+                post('/dm', { user: id });
+                console.log("Add dm channel for ", id);
+                window.location = "/";
+            }
+        });
+    </script>
+</head>
+
+<body>
+    <h2 style="text-align: center;" class="text">{{ name }} control panel</h1>
+        <div class="outer">
+            <h2 class="text">Select user</h2>
+            <button class="button button-not-menu text back-button" onclick="window.location = '/change'">Back</button>
+            {% if users | length != 0 %}
+            <p class="text">Users</p>
+            {% for user in users %}
+            <button class="button text button-not-menu" onclick="addDM('{{ user.id }}')">{{ user.name }}</button>
+            {% endfor %}
+            {% else %}
+            <p class="text error">No availible users, invite the bot to a server</p>
+            {% endif %}
+            <p class="text">Via id</p>
+            <button class="button text button-not-menu" onclick="addDM()">Add user with id</button>
+        </div>
+</body>
+
+</html>

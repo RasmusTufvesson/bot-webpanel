@@ -53,7 +53,7 @@
             {% for dm in dms %}
             <button class="button text button-not-menu" , onclick="addDM('{{ dm.id }}')">{{ dm.name }}</button>
             {% endfor %}
-            <button class="button text button-not-menu", onclick="addDM()">Add direct message channel</button>
+            <button class="button text button-not-menu", onclick="window.location = '/users'">Add direct message channel</button>
         </div>
     </body>
 
