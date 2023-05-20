@@ -21,7 +21,7 @@
             <button class="button button-not-menu text back-button" onclick="window.location = '/'">Back</button>
             {% if channel.messages | length != 0 %}
             {% for message in channel.messages %}
-            <p class="text">{{ message.author }}: {{ message.content }}</p>
+            <p class="text">{{ message.author }}: <span class="selectable">{{ message.content }}</span></p>
             {% endfor %}
             {% else %}
             <p class="text error">No messages</p>

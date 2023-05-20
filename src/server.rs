@@ -35,6 +35,7 @@ async fn change(sender: &State<mpsc::Sender<shared::Message>>, receiver: &State<
     let channels = receiver.recv().await.unwrap();
     Template::render("change_channel", context! {
         servers: channels.servers,
+        dms: channels.dms,
         name: &bot_info.inner().bot_name,
     })
 }

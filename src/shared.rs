@@ -41,11 +41,12 @@ impl Server {
 #[serde(crate = "rocket::serde")]
 pub struct ChannelMessage {
     pub servers: Vec<Server>,
+    pub dms: Vec<DMChannel>,
 }
 
 impl ChannelMessage {
-    pub fn new(servers: Vec<Server>) -> Self {
-        Self { servers }
+    pub fn new(servers: Vec<Server>, dms: Vec<DMChannel>) -> Self {
+        Self { servers, dms }
     }
 }
 
@@ -86,5 +87,18 @@ pub struct ViewChannelMessage {
 impl ViewChannelMessage {
     pub fn new(channel: Option<FullChannel>) -> Self {
         Self { channel }
+    }
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
+#[serde(crate = "rocket::serde")]
+pub struct DMChannel {
+    pub id: u64,
+    pub name: String,
+}
+
+impl DMChannel {
+    pub fn new(id: u64, name: String) -> Self {
+        Self { id, name }
     }
 }

@@ -20,8 +20,10 @@
                     window.location = "/";
                 }
 
-                window.addDM = function () {
-                    id = window.prompt("User id:");
+                window.addDM = function (id = "") {
+                    if (id === "") {
+                        id = window.prompt("User id:");
+                    }
                     post('/dm', { user: id });
                     console.log("Add dm channel for ", id);
                     window.location = "/";
@@ -48,7 +50,10 @@
             <p class="text error">No availible server channels</p>
             {% endif %}
             <p class="text">Direct messages</p>
-            <button class="button text button-not-menu", onclick="addDM()">Direct message</button>
+            {% for dm in dms %}
+            <button class="button text button-not-menu" , onclick="addDM('{{ dm.id }}')">{{ dm.name }}</button>
+            {% endfor %}
+            <button class="button text button-not-menu", onclick="addDM()">Add direct message channel</button>
         </div>
     </body>
 

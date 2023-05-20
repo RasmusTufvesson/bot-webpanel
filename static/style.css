@@ -124,3 +124,9 @@ html {
 .back-button:hover::before {
     content: "« ";
 }
+
+.selectable {
+    -webkit-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+}

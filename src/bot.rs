@@ -13,6 +13,7 @@ struct Handler {
     to_send_recv: Arc<Mutex<Receiver<shared::Message>>>,
     channel_send: Arc<Sender<shared::ChannelMessage>>,
     channel_contents_send: Arc<Sender<shared::ViewChannelMessage>>,
+    pub dm_channels: Arc<Mutex<Vec<shared::DMChannel>>>,
 }
 
 #[derive(Clone)]
@@ -38,6 +39,7 @@ impl EventHandler for Handler {
             let to_send_recv = Arc::clone(&self.to_send_recv);
             let channel_send = Arc::clone(&self.channel_send);
             let channel_contents_send = Arc::clone(&self.channel_contents_send);
+            let dm_channels = Arc::clone(&self.dm_channels);
             rocket::tokio::spawn(async move {
                 loop {
                     let result = to_send_recv.lock().await.recv().await;
@@ -71,7 +73,6 @@ impl EventHandler for Handler {
                                     };
                                     let mut manager = shard_manager.lock().await;
                                     manager.shutdown_all().await;
-                                    panic!("Bot shutdown")
                                 }
                                 shared::Message::RequestChannels => {
                                     let mut servers: Vec<shared::Server> = vec![];
@@ -91,6 +92,7 @@ impl EventHandler for Handler {
                                     }
                                     let channels = shared::ChannelMessage::new(
                                         servers,
+                                        dm_channels.lock().await.clone(),
                                     );
                                     match channel_send.send(channels).await {
                                         Ok(_) => {}
@@ -106,6 +108,10 @@ impl EventHandler for Handler {
                                             match user.create_dm_channel(&ctx.http).await {
                                                 Ok(dm) => {
                                                     *channel.lock().await = Some(dm.id);
+                                                    let dm_channel = shared::DMChannel::new(user_id.0, user.name);
+                                                    if !dm_channels.lock().await.contains(&dm_channel) {
+                                                        dm_channels.lock().await.push(dm_channel);
+                                                    }
                                                 }
                                                 Err(why) => {
                                                     eprintln!("Error creating dm: {}", why);
@@ -198,7 +204,6 @@ impl EventHandler for Handler {
                             };
                             let mut manager = shard_manager.lock().await;
                             manager.shutdown_all().await;
-                            panic!("channel closed");
                         }
                     }
                 }
@@ -209,11 +214,20 @@ impl EventHandler for Handler {
     }
 }
 
-pub async fn main(token: String, to_send_recv: Receiver<shared::Message>, channel_send: Sender<shared::ChannelMessage>, channel_contents_send: Sender<shared::ViewChannelMessage>) {
+pub async fn main<F>(
+    token: String, to_send_recv: Receiver<shared::Message>,
+    channel_send: Sender<shared::ChannelMessage>,
+    channel_contents_send: Sender<shared::ViewChannelMessage>,
+    dm_channels: Vec<shared::DMChannel>,
+    save_fn: F
+)
+where F: Fn(rocket::tokio::sync::MutexGuard<Vec<shared::DMChannel>>)
+{
     let channel_id = Arc::new(Mutex::new(None)); //Arc::new(ChannelId::from(send_channel_id));
     let to_send_recv = Arc::new(Mutex::new(to_send_recv));
     let channel_send = Arc::new(channel_send);
     let channel_contents_send = Arc::new(channel_contents_send);
+    let dm_channels: Arc<Mutex<Vec<shared::DMChannel>>> = Arc::new(Mutex::new(dm_channels));
     let intents = GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
     let mut client = Client::builder(&token, intents)
@@ -223,6 +237,7 @@ pub async fn main(token: String, to_send_recv: Receiver<shared::Message>, channe
             to_send_recv,
             channel_send,
             channel_contents_send,
+            dm_channels: Arc::clone(&dm_channels),
         })
         .await
         .expect("Error creating client");
@@ -235,6 +250,8 @@ pub async fn main(token: String, to_send_recv: Receiver<shared::Message>, channe
     if let Err(why) = client.start().await {
         eprintln!("Client error: {:?}", why);
     }
+    let guard: rocket::tokio::sync::MutexGuard<Vec<shared::DMChannel>> = dm_channels.lock().await;
+    save_fn(guard);
 }
 
 async fn send_message(ctx: &Context, channel_id: ChannelId, message: &str) {
