@@ -3,7 +3,7 @@ This is a small project i made that makes it possible to send discord messages t
 
 ## Webpanel
 By default the webpanel is opened on `localhost:8000`.
-The homepage of the webpanel looks like this:
+The homepage of the webpanel looks like this (the bot name is from the config file):
 ![image](https://github.com/RasmusTufvesson/bot-webpanel/assets/59421787/70001350-e667-4a57-be1c-3aa8e4993fdc)
 
 ## Config
