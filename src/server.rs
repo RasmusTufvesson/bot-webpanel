@@ -1,5 +1,4 @@
 use std::sync::Arc;
-
 use rocket::{
     get,
     routes,
@@ -138,7 +137,7 @@ pub async fn main(
     message_receiver: Arc<Mutex<mpsc::Receiver<shared::ViewChannelMessage>>>,
     users_receiver: Arc<Mutex<mpsc::Receiver<shared::UsersMessage>>>,
     bot_name: String,
-    invite_link: String
+    invite_link: String,
 ) -> Result<(), rocket::Error> {
     let _rocket = rocket::build()
         .manage(sender)

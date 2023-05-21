@@ -56,11 +56,12 @@ impl ChannelMessage {
 pub struct DiscordMessage {
     content: String,
     author: String,
+    attachments: Vec<String>,
 }
 
 impl DiscordMessage {
-    pub fn new(content: String, author: String) -> Self {
-        Self { content, author }
+    pub fn new(content: String, author: String, attachments: Vec<String>) -> Self {
+        Self { content, author, attachments }
     }
 }
 

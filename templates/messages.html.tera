@@ -21,7 +21,17 @@
             <button class="button button-not-menu text back-button" onclick="window.location = '/'">Back</button>
             {% if channel.messages | length != 0 %}
             {% for message in channel.messages %}
-            <p class="text">{{ message.author }}: <span class="selectable">{{ message.content }}</span></p>
+            <p class="text">{{ message.author }}: <span class="selectable">
+                {{ message.content | safe }}
+                <br>
+                {% if message.attachments | length != 0 %}
+                (attachments)
+                {% for file in message.attachments %}
+                <br>
+                <a href="{{ file }}">{{ file }}</a>
+                {% endfor %}
+                {% endif %}
+            </span></p>
             {% endfor %}
             {% else %}
             <p class="text error">No messages</p>

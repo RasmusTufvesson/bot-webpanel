@@ -32,6 +32,7 @@ body {
 
 .outer > * {
     margin-bottom: 20px !important;
+    margin-top: 0px !important;
 }
 
 .button {

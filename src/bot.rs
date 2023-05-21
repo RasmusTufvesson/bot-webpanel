@@ -6,6 +6,7 @@ use serenity::model::prelude::{ChannelId, Ready, ChannelType, UserId, Channel};
 use serenity::prelude::*;
 use rocket::tokio::sync::mpsc::{Receiver, Sender};
 use crate::shared::{self, ViewChannelMessage, DiscordMessage, FullChannel};
+use fancy_regex::{Regex};
 
 struct Handler {
     loop_running: AtomicBool,
@@ -15,6 +16,7 @@ struct Handler {
     channel_contents_send: Arc<Sender<shared::ViewChannelMessage>>,
     users_send: Arc<Sender<shared::UsersMessage>>,
     pub dm_channels: Arc<Mutex<Vec<shared::DMChannel>>>,
+    link_regex: Regex,
 }
 
 #[derive(Clone)]
@@ -42,6 +44,7 @@ impl EventHandler for Handler {
             let channel_contents_send = Arc::clone(&self.channel_contents_send);
             let dm_channels = Arc::clone(&self.dm_channels);
             let users_send = Arc::clone(&self.users_send);
+            let link_regex = self.link_regex.clone();
             rocket::tokio::spawn(async move {
                 loop {
                     let result = to_send_recv.lock().await.recv().await;
@@ -131,7 +134,9 @@ impl EventHandler for Handler {
                                             Ok(messages) => {
                                                 let mut send_messages: Vec<DiscordMessage> = vec![];
                                                 for message in messages {
-                                                    send_messages.push(DiscordMessage::new(message.content, message.author.name))
+                                                    let processed_message = link_regex.replace_all(&message.content, r#"<a href="$1">$1</a>"#).to_string();
+                                                    let attachments = message.attachments.iter().map(|val| val.url.clone()).collect();
+                                                    send_messages.push(DiscordMessage::new(processed_message, message.author.name, attachments));
                                                 }
                                                 if let Ok(channel) = channel_id.to_channel(&ctx.http).await {
                                                     match channel {
@@ -260,7 +265,9 @@ where F: Fn(rocket::tokio::sync::MutexGuard<Vec<shared::DMChannel>>)
     let dm_channels: Arc<Mutex<Vec<shared::DMChannel>>> = Arc::new(Mutex::new(dm_channels));
     let users_send = Arc::new(users_send);
     let intents = GatewayIntents::GUILD_MESSAGES
-        | GatewayIntents::DIRECT_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
+        | GatewayIntents::DIRECT_MESSAGES
+        | GatewayIntents::MESSAGE_CONTENT;
+    let link_regex = Regex::new(r"(?<![^ \n])(https?://.*?)(?![^ \n])").unwrap();
     let mut client = Client::builder(&token, intents)
         .event_handler(Handler {
             loop_running: AtomicBool::new(false),
@@ -270,6 +277,7 @@ where F: Fn(rocket::tokio::sync::MutexGuard<Vec<shared::DMChannel>>)
             channel_contents_send,
             dm_channels: Arc::clone(&dm_channels),
             users_send,
+            link_regex,
         })
         .await
         .expect("Error creating client");
